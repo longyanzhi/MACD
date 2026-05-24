@@ -31,5 +31,5 @@ jobs:
         env:
           PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
         run: |
-          cd ${{ github.workspace }}
+          cd MACD_Stock_Strategy
           python send_to_wechat.py
