@@ -1,0 +1,22 @@
+# MACD股票筛选回测系统依赖包
+
+# PostgreSQL数据库连接
+psycopg2-binary>=2.9.9
+
+# SQLAlchemy 连接池
+sqlalchemy>=2.0.0
+
+# 数据处理
+pandas>=2.0.0
+
+# 数值计算（通常已包含在pandas中）
+numpy>=1.24.0
+
+# 进度条显示
+tqdm>=4.65.0
+
+# 可选：技术分析库（如果可用将使用talib，否则使用手动计算）
+# TA-Lib>=0.4.28
+
+# Web界面
+gradio>=4.0.0

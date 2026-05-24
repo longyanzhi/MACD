@@ -1,0 +1,10 @@
+{
+  "date": "2026-04-24",
+  "signal": "buy",
+  "symbol": "601225.SH",
+  "name": "陕西煤业",
+  "price": 26.3,
+  "sim_return": -999.0,
+  "reason": "golden_cross_with_history_sim",
+  "timestamp": "2026-04-25T16:46:09.645706"
+}
