@@ -1,24 +1,20 @@
 """
 数据库配置文件
-请根据您的实际数据库环境修改以下配置
+从环境变量读取敏感信息
 """
 
+import os
 from sqlalchemy import create_engine
 from sqlalchemy.pool import QueuePool
 
 
-# 数据库连接配置
+# 数据库连接配置（从环境变量读取）
 DB_CONFIG = {
-    'host': 'frp-cat.com',           # 数据库主机地址
-    'port': 34497,                  # 数据库端口
-    'database': 'tsdbstock',        # 数据库名称
-    'user': 'tsadmin',            # 数据库用户名
-    'password': 'user6362964'   # 数据库密码
-}
-
-# Tushare 配置
-TUSHARE_CONFIG = {
-    'token': 'f8d313b7e099ffca1d87a7376b6d4b4ceca4b235326ff381f23a9de4',  # 替换为你的tushare token
+    'host': os.getenv('DB_HOST', 'localhost'),
+    'port': int(os.getenv('DB_PORT', '5432')),
+    'database': os.getenv('DB_NAME', 'tsdbstock'),
+    'user': os.getenv('DB_USER', 'tsadmin'),
+    'password': os.getenv('DB_PASSWORD', '')
 }
 
 # 创建 SQLAlchemy 引擎（带连接池）
