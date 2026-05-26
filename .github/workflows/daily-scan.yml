@@ -2,9 +2,8 @@ name: Daily MACD Stock Scan
 
 on:
   schedule:
-    # 北京时间 9:00 = UTC 1:00 (冬令时) 或 UTC 0:00 (夏令时)
-    # 使用 UTC 1:00 作为标准时间（大部分时间有效）
-    - cron: '0 1 * * *'
+    # 北京时间 9:00 = 美东时间 21：00
+    - cron: '0 21 * * *'
 
   # 允许手动触发
   workflow_dispatch:

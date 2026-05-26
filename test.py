@@ -1,70 +1,146 @@
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import numpy as np
+from sklearn.linear_model import LinearRegression
+from scipy.stats import linregress
 
-# ===================== 1. 读取数据并绘制时间-温度曲线 =====================
-file_path = r"C:\Users\35223\MACD\experiment1.xlsx"
-df = pd.read_excel(file_path, header=0)
+plt.rcParams['font.sans-serif'] = ['SimHei']
+plt.rcParams['axes.unicode_minus'] = False
 
-# 提取数据（适配你的表头：t、0.2、0.4、0.6、0.8）
-time = df['t'].values                # 时间列
-temp_20 = df[0.2].values             # 20% Sn温度
-temp_40 = df[0.4].values             # 40% Sn温度
-temp_60 = df[0.6].values             # 60% Sn温度
-temp_80 = df[0.8].values             # 80% Sn温度
+# ====================== 1. 输入实验数据 ======================
+# 室温实验 (Run 1-7) 数据
+# 列: Run, V_S2O8, V_S2SO4, V_S2O3, V_KI, delta_t, ln_1_over_dt
+data_room = pd.DataFrame({
+    'Run': [1, 2, 3, 4, 5, 6, 7],
+    'V_S2O8': [10, 10, 10, 10, 8, 6, 4],  # (NH4)2S2O8 体积
+    'V_KI':   [10, 8, 6, 4, 10, 10, 10],  # KI 体积
+    'delta_t': [260, 281, 345, 690, 286, 405, 730]  # 反应时间
+})
 
-# 绘制时间-温度冷却曲线图
-plt.figure(figsize=(10, 5))
-plt.plot(time, temp_20, label='20% Sn')
-plt.plot(time, temp_40, label='40% Sn')
-plt.plot(time, temp_60, label='60% Sn')
-plt.plot(time, temp_80, label='80% Sn')
+# 温度实验数据
+# 列: Run, T_C, delta_t
+data_temp = pd.DataFrame({
+    'Run': ['1', '1b', '1a'],
+    'T_C': [14, 30, 45],
+    'delta_t': [260, 189, 69]
+})
 
-plt.xlabel('Time (s)')
-plt.ylabel('Temperature (°C)')
-plt.title('Time-Temperature Cooling Curves')
+# 计算 ln(1/delta_t)
+data_room['ln_1_over_dt'] = np.log(1 / data_room['delta_t'])
+data_temp['ln_1_over_dt'] = np.log(1 / data_temp['delta_t'])
+data_temp['T_K'] = data_temp['T_C'] + 273.15
+data_temp['1_over_T'] = 1 / data_temp['T_K']
+
+# ====================== 2. 计算反应级数 n (对 I⁻) ======================
+# 条件: V_S2O8 不变 (Run 1-4, V_S2O8=10 cm³)
+subset_n = data_room[data_room['V_S2O8'] == 10].copy()
+subset_n['ln_V_KI'] = np.log(subset_n['V_KI'])
+
+# 线性回归: ln(1/Δt) vs ln(V_KI)
+X_n = subset_n['ln_V_KI'].values.reshape(-1, 1)
+y_n = subset_n['ln_1_over_dt'].values
+reg_n = LinearRegression().fit(X_n, y_n)
+n = reg_n.coef_[0]
+intercept_n = reg_n.intercept_
+r2_n = reg_n.score(X_n, y_n)
+
+print(f"=== 对 I⁻ 的反应级数 n ===")
+print(f"n = {n:.3f}, R² = {r2_n:.3f}")
+
+# 绘图
+plt.figure(figsize=(6, 4))
+plt.scatter(subset_n['ln_V_KI'], subset_n['ln_1_over_dt'], color='blue', label='Data points')
+x_fit = np.linspace(subset_n['ln_V_KI'].min(), subset_n['ln_V_KI'].max(), 100)
+y_fit = reg_n.predict(x_fit.reshape(-1, 1))
+plt.plot(x_fit, y_fit, 'r--', label=f'Fit: slope = {n:.2f}')
+plt.xlabel(r'$\ln(V(I^-))$')
+plt.ylabel(r'$\ln(1/\Delta t)$')
+plt.title('Determination of reaction order n ')
 plt.legend()
-plt.grid(alpha=0.3)
+plt.grid(True, alpha=0.3)
 plt.tight_layout()
-plt.savefig('Cooling_Curves.png', dpi=300)
+plt.savefig('reaction_order_n.png', dpi=300)
 plt.show()
 
-# ===================== 2. 纯理论Sn-Pb相图（无任何实验点） =====================
-# 标准相图参数（材料科学公认值）
-Pb_melt = 327.5    # 纯Pb熔点 (0% Sn)
-Sn_melt = 231.0    # 纯Sn熔点 (100% Sn)
-eutc_comp = 61.9   # 共晶成分 (61.9% Sn)
-eutc_temp = 183    # 共晶温度
+# ====================== 3. 计算反应级数 m (对 S2O8²⁻) ======================
+# 条件: V_KI 不变 (Run 1,5,6,7, V_KI=10 cm³)
+subset_m = data_room[data_room['V_KI'] == 10].copy()
+subset_m['ln_V_S2O8'] = np.log(subset_m['V_S2O8'])
 
-plt.figure(figsize=(10, 6))
+# 线性回归: ln(1/Δt) vs ln(V_S2O8)
+X_m = subset_m['ln_V_S2O8'].values.reshape(-1, 1)
+y_m = subset_m['ln_1_over_dt'].values
+reg_m = LinearRegression().fit(X_m, y_m)
+m = reg_m.coef_[0]
+intercept_m = reg_m.intercept_
+r2_m = reg_m.score(X_m, y_m)
 
-# ① 左液相线：纯Pb → 共晶点（蓝色实线）
-plt.plot([0, eutc_comp], [Pb_melt, eutc_temp], 'b-', linewidth=3, label='Left Liquidus (Pb side)')
+print(f"\n=== 对 S2O8²⁻ 的反应级数 m ===")
+print(f"m = {m:.3f}, R² = {r2_m:.3f}")
 
-# ② 右液相线：纯Sn → 共晶点（红色实线）
-plt.plot([100, eutc_comp], [Sn_melt, eutc_temp], 'r-', linewidth=3, label='Right Liquidus (Sn side)')
-
-# ③ 共晶线：183°C水平线（修复参数错误：颜色和线型分开传）
-plt.hlines(
-    y=eutc_temp,          # 水平线y轴位置
-    xmin=0, xmax=100,     # x轴范围
-    color='g',            # 颜色：绿色
-    linestyle='--',       # 线型：虚线（单独传，不再和颜色合并）
-    linewidth=2,          # 线宽
-    label=f'Eutectic Line {eutc_temp}°C'
-)
-
-# ④ 共晶点标记（金色实心点）
-plt.scatter(eutc_comp, eutc_temp, c='gold', s=200, zorder=5, label='Eutectic Point')
-
-# 图表基础设置
-plt.xlabel('Sn Mole Fraction (%)')
-plt.ylabel('Temperature (°C)')
-plt.title('Sn-Pb Binary Phase Diagram (Theoretical)')
-plt.xlim(0, 100)          # 横轴0-100% Sn
-plt.ylim(150, 350)        # 纵轴覆盖共晶点到纯Pb熔点
+# 绘图
+plt.figure(figsize=(6, 4))
+plt.scatter(subset_m['ln_V_S2O8'], subset_m['ln_1_over_dt'], color='green', label='Data points')
+x_fit = np.linspace(subset_m['ln_V_S2O8'].min(), subset_m['ln_V_S2O8'].max(), 100)
+y_fit = reg_m.predict(x_fit.reshape(-1, 1))
+plt.plot(x_fit, y_fit, 'r--', label=f'Fit: slope = {m:.2f}')
+plt.xlabel(r'$\ln(V(S_2O_8^{2-}))$')
+plt.ylabel(r'$\ln(1/\Delta t)$')
+plt.title('Determination of reaction order m')
 plt.legend()
-plt.grid(alpha=0.3)
+plt.grid(True, alpha=0.3)
 plt.tight_layout()
-plt.savefig('Sn_Pb_Phase_Diagram_Pure_Theory.png', dpi=300)
+plt.savefig('reaction_order_m.png', dpi=300)
 plt.show()
+
+# ====================== 4. 多元线性回归: 同时拟合 m, n, ln(k) ======================
+# 构建自变量矩阵: ln(V_S2O8), ln(V_KI)
+X_multi = np.log(data_room[['V_S2O8', 'V_KI']].values)
+y_multi = data_room['ln_1_over_dt'].values
+reg_multi = LinearRegression().fit(X_multi, y_multi)
+m_multi, n_multi = reg_multi.coef_
+ln_k = reg_multi.intercept_
+k = np.exp(ln_k)
+r2_multi = reg_multi.score(X_multi, y_multi)
+
+print(f"\n=== 多元线性回归结果 ===")
+print(f"m (S2O8²⁻) = {m_multi:.3f}")
+print(f"n (I⁻) = {n_multi:.3f}")
+print(f"ln(k) = {ln_k:.3f}")
+print(f"k (relative) = {k:.3e}")
+print(f"R² = {r2_multi:.3f}")
+
+# ====================== 5. 阿伦尼乌斯图: 计算活化能 Ea ======================
+# 线性回归: ln(1/Δt) vs 1/T (K⁻¹)
+X_temp = data_temp['1_over_T'].values.reshape(-1, 1)
+y_temp = data_temp['ln_1_over_dt'].values
+reg_temp = LinearRegression().fit(X_temp, y_temp)
+slope = reg_temp.coef_[0]
+intercept_temp = reg_temp.intercept_
+r2_temp = reg_temp.score(X_temp, y_temp)
+
+R = 8.314  # J·mol⁻¹·K⁻¹
+Ea = -slope * R  # J/mol
+Ea_kJ = Ea / 1000  # kJ/mol
+
+print(f"\n=== 活化能 Ea 计算 ===")
+print(f"斜率 = {slope:.3f} K")
+print(f"Ea = {Ea_kJ:.2f} kJ/mol")
+print(f"R² = {r2_temp:.3f}")
+
+# 绘图
+plt.figure(figsize=(6, 4))
+plt.scatter(data_temp['1_over_T'], data_temp['ln_1_over_dt'], color='red', label='Data points')
+x_fit = np.linspace(data_temp['1_over_T'].min(), data_temp['1_over_T'].max(), 100)
+y_fit = reg_temp.predict(x_fit.reshape(-1, 1))
+plt.plot(x_fit, y_fit, 'b--', label=f'Fit: slope = {slope:.0f} K')
+plt.xlabel(r'$1/T$ (1/K)')
+plt.ylabel(r'$\ln(1/\Delta t)$')
+plt.title('Arrhenius plot for activation energy')
+plt.legend()
+plt.grid(True, alpha=0.3)
+plt.tight_layout()
+plt.savefig('arrhenius_plot.png', dpi=300)
+plt.show()
+
+print("\n=== 所有图已保存为: reaction_order_n.png, reaction_order_m.png, arrhenius_plot.png ===")
