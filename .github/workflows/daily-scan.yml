@@ -3,7 +3,7 @@ name: Daily MACD Stock Scan
 on:
   schedule:
     # 北京时间 9:00 = 美东时间 21：00
-    - cron: '0 24 * * *'
+    - cron: '0 0 * * *'
 
   # 允许手动触发
   workflow_dispatch:
